@@ -8,11 +8,17 @@ import time
 import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-URL_TEMPLATE = 'https://www.ziprecruiter.com/candidate/search?search={search_term}&location={location_term}&page={page_num}'
+URL_TEMPLATE = 'https://www.ziprecruiter.com/candidate/search?search={search_term}&location={location_term}'
 
 
 CA_CITIES = [
@@ -139,6 +145,82 @@ def dedupe_jobs(list_of_jobs):
 
     return id_to_job.values()
 
+class ContentBlockExtractor:
+    def __init__(self, driver, url):
+        self.driver = driver
+        self.url = url
+
+    def _get_num_jobs_shown(self):
+        return len(self._get_jobs_on_page())
+
+    def _get_jobs_on_page(self):
+        return self.driver.find_elements_by_css_selector('div.job_content')
+
+    def _scroll_to_bottom(self):
+        driver.execute_script('window.scrollTo(0,document.body.scrollHeight)')
+
+    def _scroll_to_element(self, element):
+        # idk https://stackoverflow.com/a/41744403
+        actions = ActionChains(self.driver)
+        actions.move_to_element(element).perform()
+        logger.info('theoretically scolled to {}'.format(element))
+
+    def _scroll_a_little_past_element(self, element, extra_px=50):
+        self._scroll_to_element(element)
+        height = element.location['y']
+        self.driver.execute_script('window.scrollTo(0, {});'.format(height + extra_px))
+
+    def get_all_blocks(self):
+        logger.info('Getting {}'.format(self.url))
+        self.driver.get(self.url)
+        current_jobs = []
+        while True:
+            last_seen_jobs = self._get_jobs_on_page()
+            logger.info('seeing {} content blocks'.format(len(last_seen_jobs)))
+
+            # scroll to last visible job
+            if len(last_seen_jobs) == 0:
+                logger.info('No jobs, breakin')
+                break
+
+            # the "scroll'n'sleep"
+            self._scroll_a_little_past_element(last_seen_jobs[-1])
+            # Wait a few seconds for new jobs to appear
+            time.sleep(2)
+
+            # Check for more jobs! If we find more, then continue. Otherwise we'll try looking for
+            # the "load more jobs" button
+            current_jobs = self._get_jobs_on_page()
+            if len(current_jobs) > len(last_seen_jobs):
+                logger.info('Found more jobs after scrolling! {} vs {}'.format(len(current_jobs), len(last_seen_jobs)))
+                last_seen_jobs = current_jobs
+                continue
+
+            # Look for and click the "load more jobs" button
+            try:
+                WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button.load_more_jobs"))).click()
+            except Exception as e:
+                logger.info('Load more jobs button did not appear. Exception: {}'.format(str(e)))
+
+            time.sleep(3)
+            current_jobs = self._get_jobs_on_page()
+            logger.info('Now have {} jobs after scrolling'.format(len(current_jobs)))
+            if len(current_jobs) == len(last_seen_jobs):
+                logger.info('did not find any more, returning {} jobs'.format(len(current_jobs)))
+                break
+            else:
+                logger.info('Updating {} jobs to {} jobs'.format(len(last_seen_jobs), len(current_jobs)))
+                last_seen_jobs = current_jobs
+
+        logger.info('Found {} jobs'.format(len(current_jobs)))
+        soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+
+        jobs_from_bs = soup.findAll('div', {'class': 'job_content'})
+        logger.info('Found {} using selenium, {} using BS'.format(len(current_jobs), len(jobs_from_bs)))
+
+        return jobs_from_bs
+
+
 def process_search(driver):
     time_started = datetime.datetime.now()
     outfile_name = '{}_{}_{}_{}_{}_potential_eeoc_violations_from_ziprecruiter.csv'.format(
@@ -151,26 +233,15 @@ def process_search(driver):
     # search_term = 'felony -driver'
     for location in CA_CITIES:
         for search_term in SEARCH_KEYWORDS:
-            page_num = 0
-            while True:
-                url = URL_TEMPLATE.format(search_term=search_term, location_term=location, page_num=page_num)
-                logger.info('Getting {}'.format(url))
-                driver.get(url)
-                soup = BeautifulSoup(driver.page_source, 'html.parser')                    
+            url = URL_TEMPLATE.format(search_term=search_term, location_term=location)
+            content_blocks = ContentBlockExtractor(driver, url).get_all_blocks()
 
-                content_blocks = soup.findAll('div', {'class': 'job_content'})
-                logger.info('Found {} jobs'.format(len(content_blocks)))
-                if len(content_blocks) < 1:
-                    logger.info('No more jobs found, moving on')
-                    break
+            for block in content_blocks:
+                one_job = process_block(block, url, search_term, location)
+                all_jobs.append(one_job)
 
-                for block in content_blocks:
-                    one_job = process_block(block, url, search_term, location)
-                    all_jobs.append(one_job)
-
-                logger.info('Sleeping {} second(s)'.format(SLEEP_TIME_SECONDS))
-                time.sleep(SLEEP_TIME_SECONDS)
-                page_num += 1
+            logger.info('Sleeping {} second(s)'.format(SLEEP_TIME_SECONDS))
+            time.sleep(SLEEP_TIME_SECONDS)
 
     logger.info('Length of all_jobs {}'.format(len(all_jobs)))
     deduped = dedupe_jobs(all_jobs)
