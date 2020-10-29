@@ -20,9 +20,8 @@ logger = logging.getLogger(__name__)
 
 URL_TEMPLATE = 'https://www.ziprecruiter.com/candidate/search?search={search_term}&location={location_term}'
 
-
-CA_CITIES = [
-    'california',
+LOCATIONS_TO_SEARCH = [
+    'illinois',
 ]
 
 SEARCH_KEYWORDS = {
@@ -37,7 +36,7 @@ SEARCH_KEYWORDS = {
     'prison',
     'parole',
 
-    # from Jen / Redlands
+    # from J/R
     '"pass drug and background check"',
     # '"clean criminal record"', # included above
     '"clean background"',
@@ -116,7 +115,6 @@ def process_block(block, source_url, job_search_term, location_search_term):
 
     full_job_url = block.find('a', {'class': 'job_link'}).attrs['href']
 
-    # The encoding here is just me being lazy :'(
     job_post = JobPost(
         job_title,
         job_org_name,
@@ -125,13 +123,6 @@ def process_block(block, source_url, job_search_term, location_search_term):
         job_search_term,
         location_search_term,
         full_job_url
-        # job_title.encode('ascii', 'ignore'),
-        # job_org_name.encode('ascii', 'ignore'),
-        # snippet_text.encode('ascii', 'ignore'),
-        # source_url.encode('ascii', 'ignore'),
-        # job_search_term.encode('ascii', 'ignore'),
-        # location_search_term.encode('ascii', 'ignore'),
-        # full_job_url.encode('ascii', 'ignore')
     )
 
     return job_post
@@ -230,12 +221,13 @@ def process_search(driver):
     logger.info('Will write output to {}'.format(outfile_name))
     all_jobs = []
 
-    # search_term = 'felony -driver'
-    for location in CA_CITIES:
+    for location in LOCATIONS_TO_SEARCH:
         for search_term in SEARCH_KEYWORDS:
             url = URL_TEMPLATE.format(search_term=search_term, location_term=location)
+            # Extract the content blocks using Selenium
             content_blocks = ContentBlockExtractor(driver, url).get_all_blocks()
 
+            # Now that we have them all, parse out their contents
             for block in content_blocks:
                 one_job = process_block(block, url, search_term, location)
                 all_jobs.append(one_job)
