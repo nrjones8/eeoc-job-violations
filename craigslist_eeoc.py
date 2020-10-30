@@ -191,12 +191,10 @@ def main():
     # Config stuff
     max_posts = 2000
     sleep_time_between_cities = 10
-    ignore_cache = True
+    ignore_cache = False
 
 
     all_flagged_posts = []
-    # TODO - make this just concat-ing the TERMS thing from above
-    # one_term = 'arrest|conviction|"clean record"|criminal|felony|felonies|misdemeanor|jail|prison|parole'
     one_term = _build_query_from_list_of_terms(SEARCH_TERMS)
     time_started = datetime.datetime.now()
 
@@ -207,7 +205,7 @@ def main():
     logger.info('Search query is {}'.format(one_term))
     logger.info('Will write output to {}'.format(outfile_name))
 
-    for site in IL_CL_SITES:
+    for site in CALIFORNIA_CL_SITES:
         cl_jobs = CraigslistJobs(
             site=site,
             filters={
