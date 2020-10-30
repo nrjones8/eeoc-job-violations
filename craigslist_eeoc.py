@@ -177,8 +177,8 @@ def write_posts_with_metadata(csv_path, post_objs):
 def _build_query_from_list_of_terms(terms):
     quoted_terms = []
 
-    # Quote the multiple word terms. Is there a celever way to do this in a list comprehension?
-    # Probably, yes. Do I care? No, not right now.
+    # Quote the multiple word terms. There is probably a way to do this with a list
+    # comprehension...
     for t in terms:
         if ' ' in t:
             quoted_terms.append('"{}"'.format(t))
