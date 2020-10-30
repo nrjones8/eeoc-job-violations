@@ -28,7 +28,7 @@ SEARCH_TERMS = {
     'prison',
     'parole',
 
-    # from Jen / Redlands
+    # from J/R
     'pass drug and background check',
     # '"clean criminal record"', # included above
     'clean background',
@@ -47,6 +47,11 @@ CALIFORNIA_CL_SITES = [
     "inlandempire", "losangeles", "mendocino", "merced", "modesto", "monterey", "orangecounty",
     "palmsprings", "redding", "reno", "sacramento", "sandiego", "slo", "santabarbara", "santamaria",
     "sfbay", "siskiyou", "stockton", "susanville", "ventura", "visalia", "yubasutter"
+]
+
+IL_CL_SITES = [
+    "bn", "chambana", "chicago", "decatur", "lasalle", "mattoon", "peoria", "quadcities", "rockford",
+    "carbondale", "springfieldil", "stlouis", "quincy"
 ]
 
 class FlaggedPost(object):
@@ -202,7 +207,7 @@ def main():
     logger.info('Search query is {}'.format(one_term))
     logger.info('Will write output to {}'.format(outfile_name))
 
-    for site in CALIFORNIA_CL_SITES:
+    for site in IL_CL_SITES:
         cl_jobs = CraigslistJobs(
             site=site,
             filters={
@@ -223,10 +228,6 @@ def main():
             num_processed += 1
             if num_processed % 100 == 0:
                 print('Done processing {}'.format(num_processed))
-
-        # for p in dubious_posts:
-        #     print(p.serialize())
-        #     print('-------------')
 
         print('{} --- {} of {} posts were flagged as dubious'.format(site, len(dubious_posts), num_processed))
         all_flagged_posts.extend(dubious_posts)
