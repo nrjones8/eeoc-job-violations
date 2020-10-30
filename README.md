@@ -1,0 +1,19 @@
+## EEOC Potential Violation Finder
+This repo consists of a series of scripts designed to look for potential EEOC violations on online job boards - specifically, jobs that potentially discriminate against people with a criminal record.
+
+### Context
+While criminal justice reforms often focus on ending mass incarceration, the problems of American criminal justice policy extend beyond the almost 2.3 million incarcerated people in the United States today. A [2015 report](https://www.sentencingproject.org/wp-content/uploads/2015/11/Americans-with-Criminal-Records-Poverty-and-Opportunity-Profile.pdf) from The Sentencing Project estimates that as many as 100 million Americans have criminal records - and over 60% of formerly incarcerated individuals are unemployed one year after being released.
+
+Not surprisingly, it’s more difficult for people with a criminal record to get a job - but there are laws that in theory protect people with a criminal record from being discriminated against. The Equal Employment Opportunity Commission (EEOC) issued guidance dating back to 1987 that employers are not allowed to bar people from employment based solely on their criminal records - because the criminal justice system disproportionately impacts people of color, a policy of barring anybody with a criminal record from employment would disproportionately bar people of color from getting jobs.
+
+The National Employment Law Project (NELP) gives a much more detailed analysis of EEOC’s guidance in [their 2015 report](https://www.nelp.org/wp-content/uploads/2015/03/65_Million_Need_Not_Apply.pdf) 65 Million "Need Not Apply": The Case for Reforming Background Checks for Employment. Instead, an employer must consider an individual’s criminal history, how that individual has changed, and how such a history relates to the job the person is applying for.
+
+Many companies, however, completely ignore the EEOC’s guidance - the NELP report mentioned above found that even huge companies like Bank of America, Aramark, Lowe’s, and more impose overbroad background checks. Recently, the [Prison Policy Initiative reported](https://www.prisonpolicy.org/blog/2018/04/11/target_settlement/) that Target had agreed to a settlement in a discriminatory hiring lawsuit in which Target denied employment to over 41,000 Black and Latinx job applicants between 2008 and 2016, simply because they had a criminal record.
+
+## Code
+Right now, there are two scripts - one to gather potential violations from Craigslist, and one from ZipRecruiter. There are a number of parameters set in each script (e.g. what locations to search for jobs in), which are hard-coded right now - they should be easy-ish to find and change in the code in order to run the scripts for different locations outside of California.
+
+### Craigslist
+Craigslist is a fairly minimalist website, so its posts and data are easier to gather - an HTTP request for a given job gives you the entire description, there's no extra fancy client-side Javascript there. The `craigslist_eeoc.py` script will cache each post it fetches locally (in the `cl_posts` directory) - this makes it faster to re-run the script, since the script can read a previously-fetched job listing from the `cl_posts` directory rather than re-requesting from Craigslist. Removing files from that directory won't break anything, it just might slow down future runs of the script.
+
+The output of the script is a CSV, which includes what terms were flagged (e.g. "felony" if the flagged phrase was "no felony convictions"), the full job posting, the URL of the job, and more. The name of the CSV includes the time that the script was run, e.g. 2020_10_12_9_36_potential_eeoc_violations_from_craigslist.csv indicates the script was run on 10/2020 at 12:09 local time.
